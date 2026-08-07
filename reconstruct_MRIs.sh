@@ -241,7 +241,7 @@ for subject in "${dicomsort_raw_dirname[@]}"; do
         locseries=$(basename $series)
         if [ -d "${series}" ] ; then
             cp -r "${series}" "${locseries}" 
-            echo "Compressing: $${series}"
+            echo "Compressing: ${series}"
             zip -r -q "${locseries}.zip" "${locseries}" 
             rm  -r "${locseries}" 
         else
