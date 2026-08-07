@@ -91,7 +91,8 @@ for subject in "${dicomsort_raw_dirname[@]}"; do
     subj_id_short=$(echo "$filename" | sed -E 's/^(sub[-_]?)?([A-Za-z]+)[-_]?([0-9]+).*$/\2\3/i')
     date_yyyymmdd=$(echo "$subject" | grep -oP '[0-9]{8}')
     raw_sorted_dir="$destpath/raw_sorted/sub-$subj_id_short/ses-$date_yyyymmdd"
-
+    raw_sortedz_dir="$destpath/raw_sortedz/sub-$subj_id_short/ses-$date_yyyymmdd"
+    
     if [ -d "$raw_sorted_dir" ]; then
         echo "DICOM already sorted at: $raw_sorted_dir"
         echo "Skipping sorting for subject: $subject"
@@ -101,7 +102,7 @@ for subject in "${dicomsort_raw_dirname[@]}"; do
         echo "Creating necessary directories..."
 
     # Create required directories only if needed
-        for dir in zipped unzipped raw_sorted; do
+        for dir in zipped unzipped raw_sorted raw_sortedz; do
             [ -d "$destpath/$dir" ] || mkdir -p "$destpath/$dir"
         done
 
@@ -231,6 +232,34 @@ for subject in "${dicomsort_raw_dirname[@]}"; do
     else
         echo "Skipping BIDS reconstruction. Only sorting performed."
     fi
+    
+    # compress the raw-sorted data at the series level
+    exedir=$(pwd)
+    mkdir -p "${raw_sortedz_dir}"
+    cd "${raw_sortedz_dir}"
+    for series in "${raw_sorted_dir}"/* ; do
+        locseries=$(basename $series)
+        if [ -d "${series}" ] ; then
+            cp -r "${series}" "${locseries}" 
+            echo "Compressing: $${series}"
+            zip -r -q "${locseries}.zip" "${locseries}" 
+            rm  -r "${locseries}" 
+        else
+            echo "Error: Raw series folder not found ${series}" >&2
+            exit 1
+        fi
+        if [ -f "${locseries}.zip" ] ; then 
+            rm -r "${series}"
+            cp "${locseries}.zip" "${series}.zip"
+            rm  "${locseries}.zip"
+        else 
+            echo "Error: zip file not found ${raw_sortedz_dir}/${locseries}.zip" >&2
+            exit 1
+        fi
+    done
+    cd "${exedir}"
+    rm -r "$destpath/raw_sortedz"
+    
 done
 # ------------------------ Wrap-up ------------------------
 if [ $RUN_BIDS -eq 1 ]; then
